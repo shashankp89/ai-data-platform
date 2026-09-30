@@ -1,8 +1,7 @@
-FROM python:3.14-slim
+FROM python:3.12.10-slim
 
 WORKDIR /app
 
-# System deps needed by Playwright/Crawl4AI's headless Chromium
 RUN apt-get update && apt-get install -y \
     wget gnupg ca-certificates fonts-liberation libasound2 libatk-bridge2.0-0 \
     libatk1.0-0 libcups2 libdbus-1-3 libgdk-pixbuf2.0-0 libnspr4 libnss3 \

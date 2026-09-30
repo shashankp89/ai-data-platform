@@ -94,7 +94,6 @@ def generate_schema(prompt: str) -> dict:
         schema = {}
 
     if "fields" not in schema or not schema["fields"]:
-        # Safe fallback so the pipeline never crashes on a weird prompt
         schema = {"fields": [{"name": "title", "description": "Main title or name found"},
                               {"name": "summary", "description": "Short summary of relevant content"}]}
     return schema
@@ -156,7 +155,7 @@ def extract_records_from_markdown(markdown: str, fields: list[dict]) -> list[dic
     try:
         response = gemini_client.models.generate_content(
             model=MODEL,
-            contents=markdown[:12000],  # keep payload size sane
+            contents=markdown[:12000],
             config=types.GenerateContentConfig(
                 system_instruction=system,
                 response_mime_type="application/json",
@@ -190,20 +189,17 @@ async def run_data_workflow(workflow_id: str, prompt: str):
     with a workflow_id while this keeps working.
     """
     try:
-        # 1. Discover sources
         update_status(workflow_id, "searching")
         urls = discover_urls(prompt)
         if not urls:
             update_status(workflow_id, "failed", {"error_message": "No sources found for this prompt."})
             return
 
-        # 2. Decide the schema
         schema = generate_schema(prompt)
         supabase.table("workflows").update(
             {"schema_definition": schema}
         ).eq("id", workflow_id).execute()
 
-        # 3 + 4. Crawl each URL and extract structured records
         update_status(workflow_id, "crawling")
         all_records = []
         for url in urls:
@@ -214,11 +210,9 @@ async def run_data_workflow(workflow_id: str, prompt: str):
                 for r in records:
                     all_records.append({"source_url": url, "payload": r})
             except Exception as page_error:
-                # One bad URL should never kill the whole workflow
                 print(f"[engine] Skipping {url}: {page_error}")
                 continue
 
-        # 5. Deduplicate (dedupe on payload only, keep matching source_url)
         payload_only = [r["payload"] for r in all_records]
         unique_payloads = dedupe(payload_only)
         unique_records = []
@@ -231,7 +225,6 @@ async def run_data_workflow(workflow_id: str, prompt: str):
                 unique_records.append(r)
                 used.add(key)
 
-        # 6. Save to Supabase
         if unique_records:
             rows = [
                 {

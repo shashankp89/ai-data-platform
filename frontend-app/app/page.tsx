@@ -88,9 +88,7 @@ export default function Home() {
       const res = await fetch(`${API_BASE}/api/workflows/${id}/results`);
       const data = await res.json();
       setResults(Array.isArray(data) ? data : []);
-    } catch {
-      // Results fetch failing after completion isn't fatal to the run itself.
-    }
+    } catch {}
   }
 
   async function pollStatus(id: string) {

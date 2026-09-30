@@ -1,6 +1,3 @@
-// lib/api.ts
-// Small wrapper around fetch() so components don't repeat base URLs everywhere.
-
 const API_BASE = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
 
 export type Workflow = {

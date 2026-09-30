@@ -42,15 +42,7 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# ------------------------------------------------------------------
-# DEMO SAFETY NET
-# Fill this in the night before your pitch, after you've run a prompt
-# successfully once and copied its resulting workflow_id from Supabase
-# (table "workflows", newest row, copy the "id" column).
-# Keys must be the EXACT lowercase, trimmed prompt text.
-# ------------------------------------------------------------------
 DEMO_CACHE: dict[str, str] = {
-    # "find ai startups hiring in london": "paste-a-real-workflow-uuid-here",
 }
 
 
@@ -80,7 +72,6 @@ async def start_workflow(body: StartRequest):
     )
     workflow_id = result.data[0]["id"]
 
-    # Fire-and-forget background task -- API returns immediately.
     asyncio.create_task(run_data_workflow(workflow_id, prompt))
 
     return {"workflow_id": workflow_id, "cached": False}

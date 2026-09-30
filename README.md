@@ -1,5 +1,17 @@
 # AI Data Intelligence Platform
 
+## Prototype Preview
+
+These screenshots show the working prototype: a natural-language prompt, live workflow progress, structured extraction results, source filtering, sorting, and CSV export.
+
+| Prototype result | Prototype result |
+| --- | --- |
+| ![Prototype result 1](results-image/result-01.png) | ![Prototype result 2](results-image/result-02.png) |
+| ![Prototype result 3](results-image/result-03.png) | ![Prototype result 4](results-image/result-04.png) |
+| ![Prototype result 5](results-image/result-05.png) | ![Prototype result 6](results-image/result-06.png) |
+
+![Prototype result 7](results-image/result-07.png)
+
 ## What I Built
 
 I built the AI Data Intelligence Platform to make web research faster and more useful.

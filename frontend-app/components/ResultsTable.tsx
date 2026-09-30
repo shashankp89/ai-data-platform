@@ -15,7 +15,6 @@ export default function ResultsTable({
 
   const columns = useMemo(() => {
     if (schema?.fields?.length) return schema.fields.map((f) => f.name);
-    // fallback: derive columns from whatever keys are actually present
     const keys = new Set<string>();
     rows.forEach((r) => Object.keys(r.payload || {}).forEach((k) => keys.add(k)));
     return Array.from(keys);
