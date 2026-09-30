@@ -524,34 +524,7 @@ DEMO_CACHE = {
 
 When that prompt is entered again, the backend returns the saved workflow immediately. This is useful for a presentation while the live workflow remains available for other prompts.
 
-## Deployment
-
-### Backend
-
-The backend includes a [`Dockerfile`](backend/Dockerfile). It can be deployed to Render or another container host. I configure these environment variables on the host:
-
-- `SUPABASE_URL`
-- `SUPABASE_KEY`
-- `GEMINI_API_KEY`
-- `TAVILY_API_KEY`
-- `ALLOWED_ORIGINS`
-
-### Frontend
-
-I can deploy `frontend-app` to Vercel or another Next.js-compatible platform. The frontend needs:
-
-```dotenv
-NEXT_PUBLIC_API_URL=https://your-backend.example.com
-```
-
-After deployment, I add the frontend URL to the backend's `ALLOWED_ORIGINS` value. API keys stay on the backend and are never placed in `NEXT_PUBLIC_*` variables.
-
-## Security Considerations
-
-- I keep real `.env` files out of GitHub.
-- I use the Supabase key only from the backend.
-- In production, I restrict `ALLOWED_ORIGINS` to trusted frontend domains.
-- The included database policies are designed for this demo. A production version should add authentication and user-specific Row Level Security policies.
+ 
 
 ## What I Would Build Next
 
