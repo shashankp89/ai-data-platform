@@ -1,7 +1,4 @@
-"""
-database.py
-Sets up a single shared Supabase client for the whole backend.
-"""
+ 
 import os
 from dotenv import load_dotenv
 from supabase import create_client, Client
