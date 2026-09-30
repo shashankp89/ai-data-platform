@@ -1,198 +1,202 @@
+# AI Data Intelligence Platform
 
-# AI Data Intelligence Platform — Code Cubicle 6.0 (PS-01)
+An AI-powered research workspace that turns a plain-English request into a structured, source-linked dataset.
 
-Turns a plain-English request like "Find AI startups hiring in London" into a
-clean, structured, source-linked dataset shown on a live dashboard.
+For example, enter `Find recent AI startup funding news`. The platform discovers relevant web pages, determines which fields matter, reads the pages, extracts records, removes exact duplicates, and presents the results in a searchable dashboard.
 
-This README is the full step-by-step guide. Follow it top to bottom, in order.
+## Features
 
----
-## 0. Accounts you need (10 minutes, all free tiers)
+- **Natural-language data requests**: describe the information you need without writing scraper code.
+- **Dynamic extraction schemas**: Gemini selects the most useful fields for each request.
+- **Multi-source discovery**: Tavily finds relevant public web pages for the prompt.
+- **Browser-based crawling**: Crawl4AI and Playwright convert pages into clean content for extraction.
+- **Structured AI extraction**: results are returned as constrained JSON records rather than unstructured text.
+- **Source traceability**: every result keeps the URL it came from.
+- **Duplicate removal**: identical extracted payloads are deduplicated before saving.
+- **Live workflow progress**: the dashboard shows searching, crawling, extracting, and completed states.
+- **Result exploration**: filter by text or source, sort columns, and inspect dynamic fields.
+- **CSV export**: download the visible result set for use in spreadsheets or downstream systems.
+- **Workflow history**: completed and in-progress workflows are stored in Supabase for later access.
+- **Demo cache**: optionally replay a previously completed workflow instantly for reliable demonstrations.
 
-1. **GitHub** — github.com — you probably already have this. Needed to push code so Vercel/Render can deploy it.
-2. **Supabase** — supabase.com — free Postgres database.
-3. **OpenAI** — platform.openai.com — needed for gpt-4o-mini. Add a small amount of billing credit ($5 is plenty).
-4. **Tavily** — tavily.com — free API key, used for web search/discovery.
-5. **Vercel** — vercel.com — free hosting for the Next.js frontend.
-6. **Render** — render.com — free hosting for the Python backend.
+## How It Works
 
-Sign up for all six now before writing any code, so keys are ready.
+1. The frontend sends the user's prompt to the FastAPI backend.
+2. Tavily discovers up to four relevant URLs.
+3. Gemini creates a request-specific extraction schema.
+4. Crawl4AI fetches each page and converts it to Markdown.
+5. Gemini extracts records using the generated structured schema.
+6. The backend deduplicates records and stores them in Supabase with their source URLs.
+7. The frontend polls workflow status and renders the resulting dynamic table.
 
----
-## 1. Set up Supabase (the database)
+## Project Structure
 
-1. Go to supabase.com → New Project. Pick any name/region, set a database password (save it somewhere).
-2. Wait ~2 minutes for it to finish provisioning.
-3. In the left sidebar, click **SQL Editor** → **New query**.
-4. Open `backend/supabase_schema.sql` from this project, copy ALL of it, paste into the editor, click **Run**.
-5. You should see "Success. No rows returned." — this created your `workflows` and `extracted_data` tables.
-6. Go to **Project Settings → API**. Copy:
-   - **Project URL** → this is `SUPABASE_URL`
-   - **service_role key** (NOT anon key, since we write from the backend) → this is `SUPABASE_KEY`
-
----
-## 2. Get your API keys
-
-- **OpenAI:** platform.openai.com → API keys → Create new secret key. Starts with `sk-`.
-- **Tavily:** tavily.com → dashboard → API keys. Starts with `tvly-`.
-
-Keep these two plus your Supabase URL/key somewhere safe (a notes file) — you'll paste them in step 3.
-
----
-## 3. Run the backend locally
-
-You need **Python 3.14** installed (python.org/downloads — check "Add to PATH" during install on Windows).
-
-```bash
-cd backend
-python -m venv venv
-
-# Activate the virtual environment:
-# Windows:
-venv\Scripts\activate
-# Mac/Linux:
-source venv/bin/activate
-pip install -r requirements.txt
-
-python -m playwright install --with-deps chromium
-```
-
-Now set up your environment file:
-```bash
-# Copy the example file and rename it to .env
-cp .env.example .env       # Mac/Linux
-copy .env.example .env     # Windows
-```
-Open `.env` in any text editor and paste in your real `SUPABASE_URL`, `SUPABASE_KEY`, `OPENAI_API_KEY`, and `TAVILY_API_KEY` from steps 1–2. Leave `ALLOWED_ORIGINS` as is for now.
-
-Run the server:
-```bash
-uvicorn main:app --reload --port 8000
-```
-
-Open **http://localhost:8000** in your browser — you should see `{"status":"ok",...}`. That means the backend is alive.
-
-### Test it with a real request
-Open a **second** terminal and run:
-```bash
-curl -X POST http://localhost:8000/api/workflows/start -H "Content-Type: application/json" -d "{\"prompt\": \"Find recent AI startup funding news\"}"
-```
-You'll get back `{"workflow_id": "...", "cached": false}`. Copy that ID and check progress:
-```bash
-curl http://localhost:8000/api/workflows/<paste-id-here>/status
-```
-Run that a few times over ~30-60 seconds. Status will move: `pending` → `searching` → `crawling` → `extracting` → `completed` (or `failed`, if something went wrong — check the terminal running uvicorn for the error). Once `completed`, check results:
-```bash
-curl http://localhost:8000/api/workflows/<id>/results
-```
-If you see JSON records with real data, **your backend works end to end.** This is the most important checkpoint — don't move to the frontend until this works.
-
----
-## 4. Run the frontend locally
-
-You need **Node.js 18+** installed (nodejs.org).
-
-Scaffold the Next.js app (this creates all the boilerplate — config files, Tailwind setup, TypeScript config — that we don't need to write by hand):
-```bash
-npx create-next-app@latest frontend-app --typescript --tailwind --eslint --app --src-dir=false --import-alias "@/*"
-```
-Answer the prompts with defaults (just press Enter).
-
-Now copy our custom files INTO that generated project, overwriting the placeholder ones:
-- Copy `frontend/app/page.tsx` → into `frontend-app/app/page.tsx` (overwrite it)
-- Copy the whole `frontend/components/` folder → into `frontend-app/components/`
-- Copy the whole `frontend/lib/` folder → into `frontend-app/lib/`
-- Copy `frontend/.env.local.example` → into `frontend-app/.env.local` (rename it)
-
-Install the two icon/UI libraries our components use:
-```bash
-cd frontend-app
-npm install lucide-react
-```
-
-Run it:
-```bash
-npm run dev
-```
-Open **http://localhost:3000**. You should see the dashboard. Type a prompt, hit Run, and watch the status pills move through the stages, then see a results table with a working "Download CSV" button.
-
-If nothing loads or you see CORS errors in the browser console, double check the backend is running on port 8000 and `ALLOWED_ORIGINS` in `backend/.env` includes `http://localhost:3000`.
-
----
-## 5. Deploy the backend (Render)
-
-1. Push the `backend/` folder to a GitHub repo (a new repo is fine, e.g. `ai-data-platform-backend`).
-2. Go to render.com → New → Web Service → connect your GitHub repo.
-3. Render will detect the `Dockerfile` automatically. If asked, choose **Docker** as the environment.
-4. Under **Environment Variables**, add: `SUPABASE_URL`, `SUPABASE_KEY`, `OPENAI_API_KEY`, `TAVILY_API_KEY`, and `ALLOWED_ORIGINS` (you'll update this last one after deploying the frontend).
-5. Click **Create Web Service**. First build takes 5-10 minutes (it's installing a headless browser).
-6. Once live, Render gives you a URL like `https://ai-data-platform-backend.onrender.com`. Test it: visit that URL in a browser, you should see the `{"status":"ok"}` response again.
-
-**Free-tier note:** Render's free web services sleep after inactivity and take ~30-50 seconds to "wake up" on the first request. Hit your backend URL once a few minutes before your live demo to warm it up.
-
----
-## 6. Deploy the frontend (Vercel)
-
-1. Push `frontend-app/` (the full generated Next.js project, with our files copied in) to its own GitHub repo.
-2. Go to vercel.com → Add New → Project → import that repo.
-3. In the "Environment Variables" section during setup, add:
-   `NEXT_PUBLIC_API_URL` = your real Render backend URL from step 5.
-4. Click **Deploy**. Takes ~1-2 minutes.
-5. You'll get a live URL like `https://ai-data-platform.vercel.app`.
-
-Now go back to Render, edit the `ALLOWED_ORIGINS` environment variable to include your real Vercel URL (comma-separated if you keep localhost too), and redeploy the backend so CORS allows your live frontend to call it.
-
-**You now have a fully hosted, working product.** Open the Vercel URL from any device and test the whole flow again.
-
----
-## 7. The "Cache & Win" demo safety net (do this the night before judging)
-
-Live web crawling can occasionally be slow or fail (site changes, rate limits, flaky wifi at the venue). Don't let that happen during your 3-minute pitch.
-
-1. The night before, run 2-3 impressive, specific prompts through your LIVE hosted app and let them complete naturally end-to-end.
-2. In Supabase, open the `workflows` table, find each of those rows, and copy their `id` (a UUID).
-3. Open `backend/main.py`, find the `DEMO_CACHE` dictionary near the top, and fill it in:
-   ```python
-   DEMO_CACHE = {
-       "find ai startups hiring in london": "the-uuid-you-copied",
-   }
-   ```
-   The key must be the exact prompt text, lowercase, trimmed.
-4. Commit and redeploy the backend to Render.
-5. During your demo, type that EXACT prompt. The backend recognizes it and returns the already-completed workflow instantly — the dashboard will jump straight to "Completed" with real data, with zero dependency on live crawling working in front of judges.
-6. Still show 1 live, non-cached prompt too if time allows, to prove the system genuinely works — just don't make your main pitch moment depend on it.
-
----
-## 8. What to say in your pitch (aligned to the rubric)
-
-The judging rubric (from the problem statement) explicitly wants: natural-language understanding, dynamic workflow design, multi-source collection, cleaning/validation/dedup, source traceability, monitoring/management, dashboard presentation, workflow history, and search/filter/export. Walk through the demo hitting each of these in order:
-
-1. "You type what you need in plain English — no scraper code, no config." (natural language)
-2. "Watch the status bar — it's discovering sources and deciding what fields to extract *based on your request*." (dynamic workflow design)
-3. "It pulled from multiple live sources." (multi-source, point at rows with different `source_url`s)
-4. "Every row is clean and deduplicated — plug this straight into a CRM or spreadsheet." (validation/cleaning)
-5. Click a "View source" link live. "Every single field is traceable back to the exact page it came from." (traceability — this is the strongest differentiator, emphasize it)
-6. Click the sidebar. "Every workflow is saved — you can revisit and re-export any past run." (history/management)
-7. Click Download CSV. "One click, export-ready." (export)
-
----
-## Project structure reference
-
-```
+```text
 ai-data-platform/
 ├── backend/
-│   ├── main.py              # FastAPI app, endpoints, demo cache
-│   ├── engine.py            # The extraction pipeline (search/schema/crawl/extract/dedupe)
+│   ├── main.py              # FastAPI routes and workflow orchestration
+│   ├── engine.py            # Search, schema generation, crawling, extraction, dedupe
 │   ├── database.py          # Supabase client
 │   ├── requirements.txt
 │   ├── .env.example
 │   ├── Dockerfile
 │   └── supabase_schema.sql
-└── frontend/                 # Files to copy into a generated create-next-app project
-    ├── app/page.tsx
-    ├── components/Sidebar.tsx
-    ├── components/PromptBar.tsx
-    ├── components/ResultsTable.tsx
-    ├── lib/api.ts
-    └── .env.local.example
+├── frontend-app/            # Complete, runnable Next.js frontend
+│   ├── app/
+│   ├── components/
+│   ├── lib/api.ts
+│   └── package.json
+└── frontend/                # Earlier frontend component set retained for reference
 ```
+
+## Requirements
+
+- Python 3.11 or newer
+- Node.js 18 or newer
+- A Supabase project
+- A Google AI Studio Gemini API key
+- A Tavily API key
+- Playwright's Chromium browser dependency
+
+## Configure Supabase
+
+1. Create a project at [supabase.com](https://supabase.com/).
+2. Open **SQL Editor**, create a query, and run [`backend/supabase_schema.sql`](backend/supabase_schema.sql).
+3. Open **Project Settings > API** and copy the project URL and API key.
+
+The schema creates:
+
+- `workflows`: prompt, status, generated schema, errors, and timestamps.
+- `extracted_data`: extracted payloads linked to a workflow and source URL.
+
+## Run the Backend
+
+From the repository root:
+
+```bash
+cd backend
+python -m venv .venv
+```
+
+Activate the environment:
+
+```bash
+# Windows PowerShell
+.venv\Scripts\Activate.ps1
+
+# macOS/Linux
+source .venv/bin/activate
+```
+
+Install dependencies and the browser runtime:
+
+```bash
+pip install -r requirements.txt
+python -m playwright install --with-deps chromium
+```
+
+Create `backend/.env` and set:
+
+```dotenv
+SUPABASE_URL=https://your-project.supabase.co
+SUPABASE_KEY=your-supabase-key
+GEMINI_API_KEY=your-gemini-api-key
+TAVILY_API_KEY=your-tavily-api-key
+ALLOWED_ORIGINS=http://localhost:3000
+```
+
+Start the API:
+
+```bash
+uvicorn main:app --reload --port 8000
+```
+
+Verify it at [http://localhost:8000](http://localhost:8000). A healthy service returns:
+
+```json
+{"status":"ok","service":"ai-data-intelligence-platform"}
+```
+
+## Run the Frontend
+
+In a second terminal:
+
+```bash
+cd frontend-app
+npm install
+```
+
+The frontend defaults to `http://localhost:8000`. To use another backend URL, create `frontend-app/.env.local`:
+
+```dotenv
+NEXT_PUBLIC_API_URL=http://localhost:8000
+```
+
+Start the Next.js development server:
+
+```bash
+npm run dev
+```
+
+Open [http://localhost:3000](http://localhost:3000), enter a request, and select **Run**.
+
+## API Reference
+
+| Method | Endpoint | Purpose |
+| --- | --- | --- |
+| `GET` | `/` | Health check |
+| `POST` | `/api/workflows/start` | Start a workflow with `{ "prompt": "..." }` |
+| `GET` | `/api/workflows` | List the latest 50 workflows |
+| `GET` | `/api/workflows/{id}/status` | Read workflow status and metadata |
+| `GET` | `/api/workflows/{id}/results` | Read extracted records |
+
+Workflow statuses are `pending`, `searching`, `crawling`, `extracting`, `completed`, and `failed`.
+
+Example request:
+
+```bash
+curl -X POST http://localhost:8000/api/workflows/start \
+  -H "Content-Type: application/json" \
+  -d '{"prompt":"Find recent AI startup funding news"}'
+```
+
+The response contains a `workflow_id`. Use that ID with the status and results endpoints.
+
+## Demo Cache
+
+For a presentation, a known-good workflow can be returned immediately instead of running a new crawl. After a successful run, add the prompt and workflow UUID to `DEMO_CACHE` in [`backend/main.py`](backend/main.py):
+
+```python
+DEMO_CACHE = {
+    "find recent ai startup funding news": "workflow-uuid-here",
+}
+```
+
+The key is matched after trimming and converting the prompt to lowercase.
+
+## Deployment
+
+### Backend
+
+The backend includes a [`Dockerfile`](backend/Dockerfile) and can be deployed to Render, Fly.io, or another container host. Configure `SUPABASE_URL`, `SUPABASE_KEY`, `GEMINI_API_KEY`, `TAVILY_API_KEY`, and `ALLOWED_ORIGINS` in the host's secret or environment-variable settings.
+
+### Frontend
+
+Deploy `frontend-app` to Vercel or any Next.js-compatible host. Set:
+
+```dotenv
+NEXT_PUBLIC_API_URL=https://your-backend.example.com
+```
+
+After deployment, update the backend's `ALLOWED_ORIGINS` to include the frontend URL. Keep API keys on the backend only; never expose them through `NEXT_PUBLIC_*` variables.
+
+## Security Notes
+
+- Never commit `backend/.env` or `frontend-app/.env.local`.
+- Use a server-side Supabase key only in the backend environment.
+- Restrict `ALLOWED_ORIGINS` to the domains that should call the API in production.
+- The included schema enables broad public policies for the demo workflow. Add authentication and narrower Row Level Security policies before using this with private data.
+
+## License
+
+No license has been specified for this project yet.
